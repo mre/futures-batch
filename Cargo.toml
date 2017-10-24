@@ -1,0 +1,8 @@
+[package]
+authors = ["Matthias Endler <matthias-endler@gmx.net>"]
+name = "tokio-batch"
+version = "0.1.0"
+
+[dependencies]
+futures = "0.1.16"
+tokio-core = "0.1.10"
