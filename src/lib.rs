@@ -79,7 +79,7 @@ where
 
     fn flush(&mut self) -> Poll<Option<Vec<S::Item>>, S::Error> {
         self.clock = None;
-        return Ok(Some(self.take()).into());
+        Ok(Some(self.take()).into())
     }
 }
 
@@ -119,7 +119,7 @@ where
                 // Since the underlying stream ran out of values, return what we
                 // have buffered, if we have anything.
                 Ok(Async::Ready(None)) => {
-                    return if self.items.len() > 0 {
+                    return if !self.items.is_empty() {
                         let full_buf = mem::replace(&mut self.items, Vec::new());
                         Ok(Some(full_buf).into())
                     } else {
@@ -130,7 +130,7 @@ where
                 // If we've got buffered items be sure to return them first,
                 // we'll defer our error for later.
                 Err(e) => {
-                    if self.items.len() == 0 {
+                    if self.items.is_empty() {
                         return Err(e);
                     } else {
                         self.err = Some(e);
@@ -148,7 +148,7 @@ where
                 }
                 Ok(Async::NotReady) => {}
                 Err(e) => {
-                    if self.items.len() == 0 {
+                    if self.items.is_empty() {
                         return Err(From::from(e));
                     } else {
                         self.err = Some(From::from(e));
