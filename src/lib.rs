@@ -1,14 +1,14 @@
 extern crate futures;
 extern crate tokio_core;
 
+use std::prelude::v1::*;
 use std::io;
 use std::time::Duration;
 use std::mem;
-use std::prelude::v1::*;
 
-use tokio_core::reactor::{Timeout, Handle};
+use tokio_core::reactor::{Handle, Timeout};
 use futures::{Async, Future, Poll};
-use futures::stream::{Stream, Fuse};
+use futures::stream::{Fuse, Stream};
 
 /// An adaptor that chunks up elements in a vector.
 ///
@@ -129,32 +129,28 @@ where
 
                 // If we've got buffered items be sure to return them first,
                 // we'll defer our error for later.
-                Err(e) => {
-                    if self.items.is_empty() {
-                        return Err(e);
-                    } else {
-                        self.err = Some(e);
-                        return self.flush();
-                    }
-                }
+                Err(e) => if self.items.is_empty() {
+                    return Err(e);
+                } else {
+                    self.err = Some(e);
+                    return self.flush();
+                },
             }
 
             match self.clock.poll() {
                 Ok(Async::Ready(Some(()))) => {
-                     return self.flush();
+                    return self.flush();
                 }
                 Ok(Async::Ready(None)) => {
                     assert!(self.items.is_empty(), "no clock but there are items");
                 }
                 Ok(Async::NotReady) => {}
-                Err(e) => {
-                    if self.items.is_empty() {
-                        return Err(From::from(e));
-                    } else {
-                        self.err = Some(From::from(e));
-                        return self.flush();
-                    }
-                }
+                Err(e) => if self.items.is_empty() {
+                    return Err(From::from(e));
+                } else {
+                    self.err = Some(From::from(e));
+                    return self.flush();
+                },
             }
 
             return Ok(Async::NotReady);
