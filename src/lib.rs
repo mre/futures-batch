@@ -124,7 +124,7 @@ where
                         Ok(Some(full_buf).into())
                     } else {
                         Ok(Async::Ready(None))
-                    }
+                    };
                 }
 
                 // If we've got buffered items be sure to return them first,
@@ -141,7 +141,7 @@ where
 
             match self.clock.poll() {
                 Ok(Async::Ready(Some(()))) => {
-                     return Ok(Some(self.take()).into());
+                     return self.flush();
                 }
                 Ok(Async::Ready(None)) => {
                     assert!(self.items.is_empty(), "no clock but there are items");
@@ -167,21 +167,93 @@ mod tests {
     use tokio_core::reactor::Core;
     use futures::{stream, Stream};
     use std::iter;
-    use std::time::Duration;
+    use std::time::{Duration, Instant};
     use super::*;
 
     #[test]
-    fn it_works() {
+    fn messages_pass_through() {
         let mut core = Core::new().unwrap();
         let handle = core.handle();
 
         let iter = iter::once(5);
         let stream = stream::iter_ok::<_, io::Error>(iter);
 
-        let chunk_stream = Chunks::new(stream, handle, 10, Duration::new(10, 0));
+        let chunk_stream = Chunks::new(stream, handle, 5, Duration::new(10, 0));
 
         let v = chunk_stream.collect();
         let result = core.run(v).unwrap();
         assert_eq!(vec![vec![5]], result);
+    }
+
+    #[test]
+    fn message_chunks() {
+        let mut core = Core::new().unwrap();
+        let handle = core.handle();
+
+        let iter = vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9].into_iter();
+        let stream = stream::iter_ok::<_, io::Error>(iter);
+
+        let chunk_stream = Chunks::new(stream, handle, 5, Duration::new(10, 0));
+
+        let v = chunk_stream.collect();
+        let result = core.run(v).unwrap();
+        assert_eq!(vec![vec![0, 1, 2, 3, 4], vec![5, 6, 7, 8, 9]], result);
+    }
+
+    #[test]
+    fn message_early_exit() {
+        let mut core = Core::new().unwrap();
+        let handle = core.handle();
+
+        let iter = vec![1, 2, 3, 4].into_iter();
+        let stream = stream::iter_ok::<_, io::Error>(iter);
+
+        let chunk_stream = Chunks::new(stream, handle, 5, Duration::new(100, 0));
+
+        let v = chunk_stream.collect();
+        let result = core.run(v).unwrap();
+        assert_eq!(vec![vec![1, 2, 3, 4]], result);
+    }
+
+    #[test]
+    fn message_timeout() {
+        let mut core = Core::new().unwrap();
+        let handle = core.handle();
+
+        let iter = vec![1, 2, 3, 4].into_iter();
+        let stream0 = stream::iter_ok::<_, io::Error>(iter);
+
+        let iter = vec![5].into_iter();
+        let stream1 = stream::iter_ok::<_, io::Error>(iter).and_then(|n| {
+            Timeout::new(Duration::from_millis(300), &handle)
+                .unwrap()
+                .and_then(move |_| Ok(n))
+        });
+
+        let iter = vec![6, 7, 8].into_iter();
+        let stream2 = stream::iter_ok::<_, io::Error>(iter);
+
+        let stream = stream0.chain(stream1).chain(stream2);
+        let chunk_stream = Chunks::new(stream, handle.clone(), 5, Duration::from_millis(100));
+
+        let now = Instant::now();
+        let min_times = [Duration::from_millis(80), Duration::from_millis(150)];
+        let max_times = [Duration::from_millis(280), Duration::from_millis(350)];
+        let results = vec![vec![1, 2, 3, 4], vec![5, 6, 7, 8]];
+        let mut i = 0;
+
+        let v = chunk_stream
+            .map(|s| {
+                let now2 = Instant::now();
+                println!("{:?}", now2 - now);
+                assert!((now2 - now) < max_times[i]);
+                assert!((now2 - now) > min_times[i]);
+                i += 1;
+                s
+            })
+            .collect();
+
+        let result = core.run(v).unwrap();
+        assert_eq!(result, results);
     }
 }
