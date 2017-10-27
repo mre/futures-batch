@@ -3,7 +3,7 @@ authors = ["Matthias Endler <matthias-endler@gmx.net>"]
 description = "An adaptor that chunks up elements and flushes them after a timeout or when the buffer is full."
 license = "MIT OR Apache-2.0"
 name = "tokio-batch"
-version = "0.1.0"
+version = "0.1.1"
 
 [dependencies]
 futures = "0.1.16"
