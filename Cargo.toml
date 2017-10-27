@@ -8,3 +8,9 @@ version = "0.1.0"
 [dependencies]
 futures = "0.1.16"
 tokio-core = "0.1.10"
+
+[build-dependencies]
+skeptic = "0.13"
+
+[dev-dependencies]
+skeptic = "0.13"
