@@ -1,11 +1,11 @@
+use std::mem;
 use std::prelude::v1::*;
 use std::time::{Duration, Instant};
-use std::mem;
 
-use tokio::timer::Delay;
-use tokio::timer;
-use futures::{Async, Future, Poll};
 use futures::stream::{Fuse, Stream};
+use futures::{Async, Future, Poll};
+use tokio::timer;
+use tokio::timer::Delay;
 
 /// An adaptor that chunks up elements in a vector.
 ///
@@ -94,7 +94,7 @@ where
 
 impl<S> Stream for Chunks<S>
 where
-    S: Stream
+    S: Stream,
 {
     type Item = Vec<<S as Stream>::Item>;
     type Error = Error<S::Error>;
@@ -137,12 +137,14 @@ where
 
                 // If we've got buffered items be sure to return them first,
                 // we'll defer our error for later.
-                Err(e) => if self.items.is_empty() {
-                    return Err(Error(Kind::Inner(e)));
-                } else {
-                    self.err = Some(Error(Kind::Inner(e)));
-                    return self.flush().map_err(|e| Error(Kind::Inner(e)));
-                },
+                Err(e) => {
+                    if self.items.is_empty() {
+                        return Err(Error(Kind::Inner(e)));
+                    } else {
+                        self.err = Some(Error(Kind::Inner(e)));
+                        return self.flush().map_err(|e| Error(Kind::Inner(e)));
+                    }
+                }
             }
 
             match self.clock.poll() {
@@ -153,12 +155,14 @@ where
                     assert!(self.items.is_empty(), "no clock but there are items");
                 }
                 Ok(Async::NotReady) => {}
-                Err(e) => if self.items.is_empty() {
-                    return Err(Error(Kind::Timer(e)));
-                } else {
-                    self.err = Some(Error(Kind::Timer(e)));
-                    return self.flush().map_err(|e| Error(Kind::Inner(e)));
-                },
+                Err(e) => {
+                    if self.items.is_empty() {
+                        return Err(Error(Kind::Timer(e)));
+                    } else {
+                        self.err = Some(Error(Kind::Timer(e)));
+                        return self.flush().map_err(|e| Error(Kind::Inner(e)));
+                    }
+                }
             }
 
             return Ok(Async::NotReady);
@@ -168,11 +172,11 @@ where
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use futures::stream;
+    use std::io;
     use std::iter;
     use std::time::{Duration, Instant};
-    use std::io;
-    use super::*;
 
     #[test]
     fn messages_pass_through() {
@@ -182,15 +186,13 @@ mod tests {
         let chunk_stream = Chunks::new(stream, 5, Duration::new(10, 0));
 
         let v = chunk_stream.collect();
-        tokio::run(
-            v.then(|res| {
-                match res {
-                    Err(_) => assert!(false),
-                    Ok(v) => assert_eq!(vec![vec![5]], v),
-                };
-                Ok(())
-            })
-        );
+        tokio::run(v.then(|res| {
+            match res {
+                Err(_) => assert!(false),
+                Ok(v) => assert_eq!(vec![vec![5]], v),
+            };
+            Ok(())
+        }));
     }
 
     #[test]
@@ -201,15 +203,13 @@ mod tests {
         let chunk_stream = Chunks::new(stream, 5, Duration::new(10, 0));
 
         let v = chunk_stream.collect();
-        tokio::run(
-            v.then(|res| {
-                match res {
-                    Err(_) => assert!(false),
-                    Ok(v) => assert_eq!(vec![vec![0, 1, 2, 3, 4], vec![5, 6, 7, 8, 9]], v),
-                };
-                Ok(())
-            })
-        );
+        tokio::run(v.then(|res| {
+            match res {
+                Err(_) => assert!(false),
+                Ok(v) => assert_eq!(vec![vec![0, 1, 2, 3, 4], vec![5, 6, 7, 8, 9]], v),
+            };
+            Ok(())
+        }));
     }
 
     #[test]
@@ -220,15 +220,13 @@ mod tests {
         let chunk_stream = Chunks::new(stream, 5, Duration::new(100, 0));
 
         let v = chunk_stream.collect();
-        tokio::run(
-            v.then(|res| {
-                match res {
-                    Err(_) => assert!(false),
-                    Ok(v) => assert_eq!(vec![vec![1, 2, 3, 4]], v),
-                };
-                Ok(())
-            })
-        );
+        tokio::run(v.then(|res| {
+            match res {
+                Err(_) => assert!(false),
+                Ok(v) => assert_eq!(vec![vec![1, 2, 3, 4]], v),
+            };
+            Ok(())
+        }));
     }
 
     #[test]
@@ -266,14 +264,12 @@ mod tests {
             })
             .collect();
 
-        tokio::run(
-            v.then(move |res| {
-                match res {
-                    Err(_) => assert!(false),
-                    Ok(v) => assert_eq!(v, results),
-                };
-                Ok(())
-            })
-        );
+        tokio::run(v.then(move |res| {
+            match res {
+                Err(_) => assert!(false),
+                Ok(v) => assert_eq!(v, results),
+            };
+            Ok(())
+        }));
     }
 }
