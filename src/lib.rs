@@ -95,7 +95,6 @@ where
 impl<S> Stream for Chunks<S>
 where
     S: Stream
-    // <S as Stream>::Error: From<io::Error>,
 {
     type Item = Vec<<S as Stream>::Item>;
     type Error = Error<S::Error>;
