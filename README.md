@@ -13,28 +13,31 @@ or a predefined timeout was triggered.
 ## Usage
 
 ```rust
-extern crate tokio_core;
-extern crate futures;
-extern crate tokio_batch;
-
-use tokio_core::reactor::Core;
-use futures::{stream, Stream};
 use std::io;
 use std::time::Duration;
+
+use futures::{stream, Future, Stream};
+use tokio::runtime::Runtime;
 use tokio_batch::*;
 
 fn main() {
-    let mut core = Core::new().unwrap();
-    let handle = core.handle();
+    let mut rt = Runtime::new().unwrap();
 
     let iter = vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9].into_iter();
     let stream = stream::iter_ok::<_, io::Error>(iter);
 
-    let chunk_stream = Chunks::new(stream, handle, 5, Duration::new(10, 0));
+    let chunk_stream = Chunks::new(stream, 5, Duration::new(10, 0));
 
     let v = chunk_stream.collect();
-    let result = core.run(v).unwrap();
-    assert_eq!(vec![vec![0, 1, 2, 3, 4], vec![5, 6, 7, 8, 9]], result);
+    rt.spawn(v.then(|res| {
+        match res {
+            Ok(v) => assert_eq!(vec![vec![0, 1, 2, 3, 4], vec![5, 6, 7, 8, 9]], v),
+            Err(_) => assert!(false),
+        }
+        Ok(())
+    }));
+
+    rt.shutdown_on_idle().wait().unwrap();
 }
 ```
 

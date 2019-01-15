@@ -1,14 +1,11 @@
-extern crate futures;
-extern crate tokio_core;
-
-use std::prelude::v1::*;
-use std::io;
-use std::time::Duration;
 use std::mem;
+use std::prelude::v1::*;
+use std::time::{Duration, Instant};
 
-use tokio_core::reactor::{Handle, Timeout};
-use futures::{Async, Future, Poll};
 use futures::stream::{Fuse, Stream};
+use futures::{Async, Future, Poll};
+use tokio::timer;
+use tokio::timer::Delay;
 
 /// An adaptor that chunks up elements in a vector.
 ///
@@ -24,25 +21,37 @@ pub struct Chunks<S>
 where
     S: Stream,
 {
-    handle: Handle,
-    clock: Option<Timeout>,
+    clock: Option<Delay>,
     duration: Duration,
     items: Vec<S::Item>,
-    err: Option<S::Error>,
+    err: Option<Error<S::Error>>,
     stream: Fuse<S>,
+}
+
+/// Error returned by `Chunks`.
+#[derive(Debug)]
+pub struct Error<T>(Kind<T>);
+
+/// Chunks error variants
+#[derive(Debug)]
+enum Kind<T> {
+    /// Inner value returned an error
+    Inner(T),
+
+    /// Timer returned an error.
+    Timer(timer::Error),
 }
 
 impl<S> Chunks<S>
 where
     S: Stream,
 {
-    pub fn new(s: S, handle: Handle, capacity: usize, duration: Duration) -> Chunks<S> {
+    pub fn new(s: S, capacity: usize, duration: Duration) -> Chunks<S> {
         assert!(capacity > 0);
 
         Chunks {
-            handle: handle,
             clock: None,
-            duration: duration,
+            duration,
             items: Vec::with_capacity(capacity),
             err: None,
             stream: s.fuse(),
@@ -86,14 +95,13 @@ where
 impl<S> Stream for Chunks<S>
 where
     S: Stream,
-    <S as Stream>::Error: From<io::Error>,
 {
     type Item = Vec<<S as Stream>::Item>;
-    type Error = <S as Stream>::Error;
+    type Error = Error<S::Error>;
 
     fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
-        if let Some(err) = self.err.take() {
-            return Err(err);
+        if let Some(e) = self.err.take() {
+            return Err(e);
         }
 
         let cap = self.items.capacity();
@@ -106,11 +114,11 @@ where
                 // the full one.
                 Ok(Async::Ready(Some(item))) => {
                     if self.items.is_empty() {
-                        self.clock = Some(Timeout::new(self.duration, &self.handle).unwrap());
+                        self.clock = Some(Delay::new(Instant::now() + self.duration));
                     }
                     self.items.push(item);
                     if self.items.len() >= cap {
-                        return self.flush();
+                        return self.flush().map_err(|e| Error(Kind::Inner(e)));
                     } else {
                         continue;
                     }
@@ -129,28 +137,32 @@ where
 
                 // If we've got buffered items be sure to return them first,
                 // we'll defer our error for later.
-                Err(e) => if self.items.is_empty() {
-                    return Err(e);
-                } else {
-                    self.err = Some(e);
-                    return self.flush();
-                },
+                Err(e) => {
+                    if self.items.is_empty() {
+                        return Err(Error(Kind::Inner(e)));
+                    } else {
+                        self.err = Some(Error(Kind::Inner(e)));
+                        return self.flush().map_err(|e| Error(Kind::Inner(e)));
+                    }
+                }
             }
 
             match self.clock.poll() {
                 Ok(Async::Ready(Some(()))) => {
-                    return self.flush();
+                    return self.flush().map_err(|e| Error(Kind::Inner(e)));
                 }
                 Ok(Async::Ready(None)) => {
                     assert!(self.items.is_empty(), "no clock but there are items");
                 }
                 Ok(Async::NotReady) => {}
-                Err(e) => if self.items.is_empty() {
-                    return Err(From::from(e));
-                } else {
-                    self.err = Some(From::from(e));
-                    return self.flush();
-                },
+                Err(e) => {
+                    if self.items.is_empty() {
+                        return Err(Error(Kind::Timer(e)));
+                    } else {
+                        self.err = Some(Error(Kind::Timer(e)));
+                        return self.flush().map_err(|e| Error(Kind::Inner(e)));
+                    }
+                }
             }
 
             return Ok(Async::NotReady);
@@ -160,77 +172,80 @@ where
 
 #[cfg(test)]
 mod tests {
-    use tokio_core::reactor::Core;
-    use futures::{stream, Stream};
+    use super::*;
+    use futures::stream;
+    use std::io;
     use std::iter;
     use std::time::{Duration, Instant};
-    use super::*;
 
     #[test]
     fn messages_pass_through() {
-        let mut core = Core::new().unwrap();
-        let handle = core.handle();
-
         let iter = iter::once(5);
         let stream = stream::iter_ok::<_, io::Error>(iter);
 
-        let chunk_stream = Chunks::new(stream, handle, 5, Duration::new(10, 0));
+        let chunk_stream = Chunks::new(stream, 5, Duration::new(10, 0));
 
         let v = chunk_stream.collect();
-        let result = core.run(v).unwrap();
-        assert_eq!(vec![vec![5]], result);
+        tokio::run(v.then(|res| {
+            match res {
+                Err(_) => assert!(false),
+                Ok(v) => assert_eq!(vec![vec![5]], v),
+            };
+            Ok(())
+        }));
     }
 
     #[test]
     fn message_chunks() {
-        let mut core = Core::new().unwrap();
-        let handle = core.handle();
-
         let iter = vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9].into_iter();
         let stream = stream::iter_ok::<_, io::Error>(iter);
 
-        let chunk_stream = Chunks::new(stream, handle, 5, Duration::new(10, 0));
+        let chunk_stream = Chunks::new(stream, 5, Duration::new(10, 0));
 
         let v = chunk_stream.collect();
-        let result = core.run(v).unwrap();
-        assert_eq!(vec![vec![0, 1, 2, 3, 4], vec![5, 6, 7, 8, 9]], result);
+        tokio::run(v.then(|res| {
+            match res {
+                Err(_) => assert!(false),
+                Ok(v) => assert_eq!(vec![vec![0, 1, 2, 3, 4], vec![5, 6, 7, 8, 9]], v),
+            };
+            Ok(())
+        }));
     }
 
     #[test]
     fn message_early_exit() {
-        let mut core = Core::new().unwrap();
-        let handle = core.handle();
-
         let iter = vec![1, 2, 3, 4].into_iter();
         let stream = stream::iter_ok::<_, io::Error>(iter);
 
-        let chunk_stream = Chunks::new(stream, handle, 5, Duration::new(100, 0));
+        let chunk_stream = Chunks::new(stream, 5, Duration::new(100, 0));
 
         let v = chunk_stream.collect();
-        let result = core.run(v).unwrap();
-        assert_eq!(vec![vec![1, 2, 3, 4]], result);
+        tokio::run(v.then(|res| {
+            match res {
+                Err(_) => assert!(false),
+                Ok(v) => assert_eq!(vec![vec![1, 2, 3, 4]], v),
+            };
+            Ok(())
+        }));
     }
 
     #[test]
     fn message_timeout() {
-        let mut core = Core::new().unwrap();
-        let handle = core.handle();
-
         let iter = vec![1, 2, 3, 4].into_iter();
         let stream0 = stream::iter_ok::<_, io::Error>(iter);
 
         let iter = vec![5].into_iter();
         let stream1 = stream::iter_ok::<_, io::Error>(iter).and_then(|n| {
-            Timeout::new(Duration::from_millis(300), &handle)
-                .unwrap()
+            Delay::new(Instant::now() + Duration::from_millis(300))
                 .and_then(move |_| Ok(n))
+                .map_err(|e| io::Error::new(io::ErrorKind::TimedOut, e))
         });
 
         let iter = vec![6, 7, 8].into_iter();
         let stream2 = stream::iter_ok::<_, io::Error>(iter);
 
         let stream = stream0.chain(stream1).chain(stream2);
-        let chunk_stream = Chunks::new(stream, handle.clone(), 5, Duration::from_millis(100));
+        let chunk_stream = Chunks::new(stream, 5, Duration::from_millis(100));
 
         let now = Instant::now();
         let min_times = [Duration::from_millis(80), Duration::from_millis(150)];
@@ -239,7 +254,7 @@ mod tests {
         let mut i = 0;
 
         let v = chunk_stream
-            .map(|s| {
+            .map(move |s| {
                 let now2 = Instant::now();
                 println!("{:?}", now2 - now);
                 assert!((now2 - now) < max_times[i]);
@@ -249,7 +264,12 @@ mod tests {
             })
             .collect();
 
-        let result = core.run(v).unwrap();
-        assert_eq!(result, results);
+        tokio::run(v.then(move |res| {
+            match res {
+                Err(_) => assert!(false),
+                Ok(v) => assert_eq!(v, results),
+            };
+            Ok(())
+        }));
     }
 }
