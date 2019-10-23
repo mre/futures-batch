@@ -3,18 +3,13 @@ authors = ["Matthias Endler <matthias-endler@gmx.net>"]
 description = "An adaptor that chunks up elements and flushes them after a timeout or when the buffer is full."
 license = "MIT OR Apache-2.0"
 name = "tokio-batch"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2018"
 
 [dependencies]
-futures-preview = { version = "0.3.0-alpha.18", features = ["compat"] }
+futures-preview = { version = "0.3.0-alpha.19", features = ["compat"] }
 pin-utils = "0.1.0-alpha.4"
 tokio = "0.1.22"
 tokio-timer = "0.2.11"
 futures01 = { package = "futures", version = "0.1.29" }
-
-[build-dependencies]
-skeptic = "0.13"
-
-[dev-dependencies]
-skeptic = "0.13"
+doc-comment = "0.3.1"

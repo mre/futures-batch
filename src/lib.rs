@@ -1,7 +1,6 @@
-// This supplements the `futures-preview` provided `chunks` operator[1] with a
-// an additional delay to flush the inner vector.
-//
-// [1]: https://github.com/rust-lang-nursery/futures-rs/blob/4613193023dd4071bbd32b666e3b85efede3a725/futures-util/src/stream/chunks.rs
+#[macro_use]
+extern crate doc_comment;
+doctest!("../README.md");
 
 use core::mem;
 use core::pin::Pin;
@@ -16,8 +15,6 @@ use futures01::Async;
 use std::time::{Duration, Instant};
 use tokio::prelude::Future;
 use tokio::timer::Delay;
-//
-impl<T: ?Sized> ChunksTimeoutStreamExt for T where T: Stream {}
 
 pub trait ChunksTimeoutStreamExt: Stream {
     fn chunks_timeout(self, capacity: usize, duration: Duration) -> ChunksTimeout<Self>
@@ -27,7 +24,7 @@ pub trait ChunksTimeoutStreamExt: Stream {
         ChunksTimeout::new(self, capacity, duration)
     }
 }
-//
+impl<T: ?Sized> ChunksTimeoutStreamExt for T where T: Stream {}
 
 #[derive(Debug)]
 #[must_use = "streams do nothing unless polled"]
@@ -182,6 +179,11 @@ impl<St: FusedStream> FusedStream for ChunksTimeout<St> {
         self.stream.is_terminated() & self.items.is_empty()
     }
 }
+
+/// ```
+/// let result = doccomments::div(10, 2);
+/// assert_eq!(result, 5);
+/// ```
 
 // Forwarding impl of Sink from the underlying stream
 #[cfg(feature = "sink")]
