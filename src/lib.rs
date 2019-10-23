@@ -180,11 +180,6 @@ impl<St: FusedStream> FusedStream for ChunksTimeout<St> {
     }
 }
 
-/// ```
-/// let result = doccomments::div(10, 2);
-/// assert_eq!(result, 5);
-/// ```
-
 // Forwarding impl of Sink from the underlying stream
 #[cfg(feature = "sink")]
 impl<S, Item> Sink<Item> for ChunksTimeout<S>
