@@ -12,4 +12,6 @@ pin-utils = "0.1.0-alpha.4"
 tokio = "0.1.22"
 tokio-timer = "0.2.11"
 futures01 = { package = "futures", version = "0.1.29" }
-doc-comment = "0.3.1"
+
+[dev-dependencies.doc-comment]
+version = "0.3"

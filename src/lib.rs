@@ -1,6 +1,10 @@
+#[cfg(test)]
 #[macro_use]
 extern crate doc_comment;
+
+#[cfg(test)]
 doctest!("../README.md");
+
 
 use core::mem;
 use core::pin::Pin;
