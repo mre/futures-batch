@@ -43,8 +43,7 @@ Check [this blog post](https://rust-lang-nursery.github.io/futures-rs/blog/2019/
 
 ## Credits
 
-This was taken and adjusted from
-https://github.com/rust-lang-nursery/futures-rs/blob/4613193023dd4071bbd32b666e3b85efede3a725/futures-util/src/stream/chunks.rs
-and moved into a separate crate for usability.
+This was taken and adjusted from [futures-util](
+https://github.com/rust-lang-nursery/futures-rs/blob/4613193023dd4071bbd32b666e3b85efede3a725/futures-util/src/stream/chunks.rs) and moved into a separate crate for reusability.
 
-Thanks to [@arielb1](https://github.com/arielb1) and [@alexcrichton](https://github.com/alexcrichton/) for their support!
+Thanks to [@arielb1](https://github.com/arielb1), [@alexcrichton](https://github.com/alexcrichton/), and [wngr](https://github.com/wngr) for their contributions!
