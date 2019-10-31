@@ -12,39 +12,39 @@ or a predefined timeout was triggered.
 
 ## Usage
 
+Either as a standalone Stream Operator or directly as a combinator:
 ```rust
-use std::io;
+use futures::future;
+use futures::stream;
+use futures::{FutureExt, StreamExt, TryFutureExt};
 use std::time::Duration;
-
-use futures::{stream, Future, Stream};
-use tokio::runtime::Runtime;
-use tokio_batch::*;
+use tokio_batch::ChunksTimeoutStreamExt;
 
 fn main() {
-    let mut rt = Runtime::new().unwrap();
-
     let iter = vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9].into_iter();
-    let stream = stream::iter_ok::<_, io::Error>(iter);
+    let v = stream::iter(iter)
+        .chunks_timeout(5, Duration::new(10, 0))
+        .collect::<Vec<_>>();
 
-    let chunk_stream = Chunks::new(stream, 5, Duration::new(10, 0));
-
-    let v = chunk_stream.collect();
-    rt.spawn(v.then(|res| {
-        match res {
-            Ok(v) => assert_eq!(vec![vec![0, 1, 2, 3, 4], vec![5, 6, 7, 8, 9]], v),
-            Err(_) => assert!(false),
-        }
-        Ok(())
-    }));
-
-    rt.shutdown_on_idle().wait().unwrap();
+    tokio::run(
+        v.then(|res| {
+            assert_eq!(vec![vec![0, 1, 2, 3, 4], vec![5, 6, 7, 8, 9]], res);
+            future::ready(())
+        })
+        .unit_error()
+        .boxed()
+        .compat(),
+    );
 }
 ```
+
+_Note: This is using the [`futures-preview`](https://crates.io/crates/futures-preview) crate.
+Check [this blog post](https://rust-lang-nursery.github.io/futures-rs/blog/2019/04/18/compatibility-layer.html) about the futures-rs compability layer._
 
 ## Credits
 
 This was taken and adjusted from
-https://github.com/alexcrichton/futures-rs/blob/master/src/stream/chunks.rs
+https://github.com/rust-lang-nursery/futures-rs/blob/4613193023dd4071bbd32b666e3b85efede3a725/futures-util/src/stream/chunks.rs
 and moved into a separate crate for usability.
 
 Thanks to [@arielb1](https://github.com/arielb1) and [@alexcrichton](https://github.com/alexcrichton/) for their support!
