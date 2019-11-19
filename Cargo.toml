@@ -11,7 +11,7 @@ repository = "https://github.com/mre/tokio-batch"
 futures-preview = { version = "0.3.0-alpha.19", features = ["compat"] }
 pin-utils = "0.1.0-alpha.4"
 tokio = "0.1.22"
-futures-timer = "1.0.2"
+futures-timer = "2.0.2"
 
 [dev-dependencies.doc-comment]
 version = "0.3"
