@@ -1,5 +1,7 @@
 # tokio-batch
 
+![Build status](https://github.com/mre/tokio-batch/workflows/Rust/badge.svg)
+
 An adaptor that chunks up elements and flushes them after a timeout or when the buffer is full.
 
 ## Description
