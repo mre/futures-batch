@@ -10,7 +10,7 @@ repository = "https://github.com/mre/tokio-batch"
 [dependencies]
 futures-preview = { version = "0.3.0-alpha.19", features = ["compat"] }
 pin-utils = "0.1.0-alpha.4"
-tokio = "0.1.22"
+tokio = "0.2.1"
 futures-timer = "2.0.2"
 
 [dev-dependencies.doc-comment]
