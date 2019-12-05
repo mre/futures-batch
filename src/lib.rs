@@ -5,19 +5,18 @@ extern crate doc_comment;
 #[cfg(test)]
 doctest!("../README.md");
 
-
 use core::mem;
 use core::pin::Pin;
 use futures::stream::{Fuse, FusedStream, Stream};
-use futures::Future;
 use futures::task::{Context, Poll};
+use futures::Future;
 use futures::StreamExt;
 #[cfg(feature = "sink")]
 use futures_sink::Sink;
 use pin_utils::{unsafe_pinned, unsafe_unpinned};
 
-use std::time::Duration;
 use futures_timer::Delay;
+use std::time::Duration;
 
 pub trait ChunksTimeoutStreamExt: Stream {
     fn chunks_timeout(self, capacity: usize, duration: Duration) -> ChunksTimeout<Self>
@@ -112,8 +111,7 @@ impl<St: Stream> Stream for ChunksTimeout<St> {
                     // the full one.
                     Some(item) => {
                         if self.items.is_empty() {
-                            *self.as_mut().clock() =
-                                Some(Delay::new(self.duration));
+                            *self.as_mut().clock() = Some(Delay::new(self.duration));
                         }
                         self.as_mut().items().push(item);
                         if self.items.len() >= self.cap {
@@ -142,7 +140,12 @@ impl<St: Stream> Stream for ChunksTimeout<St> {
                 Poll::Pending => {}
             }
 
-            match self.as_mut().clock().as_pin_mut().map(|clock| clock.poll(cx)) {
+            match self
+                .as_mut()
+                .clock()
+                .as_pin_mut()
+                .map(|clock| clock.poll(cx))
+            {
                 Some(Poll::Ready(())) => {
                     *self.as_mut().clock() = None;
                     return Poll::Ready(Some(self.as_mut().take()));
@@ -150,7 +153,7 @@ impl<St: Stream> Stream for ChunksTimeout<St> {
                 Some(Poll::Pending) => {}
                 None => {
                     debug_assert!(
-                        self.as_mut().items().is_empty(),
+                        self.items().is_empty(),
                         "Inner buffer is empty, but clock is available."
                     );
                 }
@@ -192,25 +195,21 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use futures::future;
-    use futures::{stream, FutureExt, StreamExt, TryFutureExt};
+    use futures::{stream, FutureExt, StreamExt};
     use std::iter;
     use std::time::{Duration, Instant};
+    use tokio::runtime::Runtime;
 
     #[test]
     fn messages_pass_through() {
         let v = stream::iter(iter::once(5))
             .chunks_timeout(5, Duration::new(1, 0))
             .collect::<Vec<_>>();
-        tokio::run(
-            v.then(|x| {
-                assert_eq!(vec![vec![5]], x);
-                future::ready(())
-            })
-            .unit_error()
-            .boxed()
-            .compat(),
-        );
+
+        let mut rt = Runtime::new().expect("Failed to create tokio runtime");
+        rt.block_on(async move {
+            assert_eq!(vec![vec![5]], v.await);
+        })
     }
 
     #[test]
@@ -221,15 +220,11 @@ mod tests {
         let chunk_stream = ChunksTimeout::new(stream, 5, Duration::new(1, 0));
 
         let v = chunk_stream.collect::<Vec<_>>();
-        tokio::run(
-            v.then(|res| {
-                assert_eq!(vec![vec![0, 1, 2, 3, 4], vec![5, 6, 7, 8, 9]], res);
-                future::ready(())
-            })
-            .unit_error()
-            .boxed()
-            .compat(),
-        );
+
+        let mut rt = Runtime::new().expect("Failed to create tokio runtime");
+        rt.block_on(async move {
+            assert_eq!(vec![vec![0, 1, 2, 3, 4], vec![5, 6, 7, 8, 9]], v.await);
+        })
     }
 
     #[test]
@@ -240,15 +235,11 @@ mod tests {
         let chunk_stream = ChunksTimeout::new(stream, 5, Duration::new(1, 0));
 
         let v = chunk_stream.collect::<Vec<_>>();
-        tokio::run(
-            v.then(|res| {
-                assert_eq!(vec![vec![1, 2, 3, 4]], res);
-                future::ready(())
-            })
-            .unit_error()
-            .boxed()
-            .compat(),
-        );
+
+        let mut rt = Runtime::new().expect("Failed to create tokio runtime");
+        rt.block_on(async move {
+            assert_eq!(vec![vec![1, 2, 3, 4]], v.await);
+        })
     }
 
     // TODO: use the `tokio-test` and `futures-test-preview` crates
@@ -258,10 +249,8 @@ mod tests {
         let stream0 = stream::iter(iter);
 
         let iter = vec![5].into_iter();
-        let stream1 = stream::iter(iter).then(move |n| {
-            Delay::new(Duration::from_millis(300))
-                .map(move |_| n)
-        });
+        let stream1 = stream::iter(iter)
+            .then(move |n| Delay::new(Duration::from_millis(300)).map(move |_| n));
 
         let iter = vec![6, 7, 8].into_iter();
         let stream2 = stream::iter(iter);
@@ -286,14 +275,9 @@ mod tests {
             })
             .collect::<Vec<_>>();
 
-        tokio::run(
-            v.then(move |res| {
-                assert_eq!(res, results);
-                future::ready(())
-            })
-            .unit_error()
-            .boxed()
-            .compat(),
-        );
+        let mut rt = Runtime::new().expect("Failed to create tokio runtime");
+        rt.block_on(async move {
+            assert_eq!(v.await, results);
+        });
     }
 }
