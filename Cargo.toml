@@ -13,7 +13,7 @@ pin-utils = "0.1.0-alpha.4"
 futures-timer = "2.0.2"
 
 [dev-dependencies]
-tokio = { version = "0.2.2", features = ["macros", "rt-core"] }
+tokio = { version = "0.2", features = ["macros", "rt-core"] }
 
 [dev-dependencies.doc-comment]
 version = "0.3"
