@@ -27,16 +27,15 @@ use futures_batch::ChunksTimeoutStreamExt;
 #[tokio::main]
 async fn main() {
     let iter = vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9].into_iter();
-    let v = stream::iter(iter)
+    let results = stream::iter(iter)
         .chunks_timeout(5, Duration::new(10, 0))
         .collect::<Vec<_>>();
 
-    assert_eq!(vec![vec![0, 1, 2, 3, 4], vec![5, 6, 7, 8, 9]], v.await);
+    assert_eq!(vec![vec![0, 1, 2, 3, 4], vec![5, 6, 7, 8, 9]], results.await);
 }
 ```
 
-_Note: This is using the [`futures-preview`](https://crates.io/crates/futures-preview) crate.
-Check [this blog post](https://rust-lang-nursery.github.io/futures-rs/blog/2019/04/18/compatibility-layer.html) about the futures-rs compability layer._
+\_Note: This is using the [`futures 0.3`](https://crates.io/crates/futures) crate.
 
 ## Performance
 
