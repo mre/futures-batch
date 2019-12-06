@@ -1,11 +1,11 @@
 [package]
 authors = ["Matthias Endler <matthias-endler@gmx.net>"]
-description = "An adaptor that chunks up elements and flushes them after a timeout or when the buffer is full."
+description = "An adaptor that chunks up elements and flushes them after a timeout or when the buffer is full. (Formerly known as tokio-batch.)"
 license = "MIT OR Apache-2.0"
-name = "tokio-batch"
+name = "futures-batch"
 version = "0.5.0"
 edition = "2018"
-repository = "https://github.com/mre/tokio-batch"
+repository = "https://github.com/mre/futures-batch"
 
 [dependencies]
 futures-preview = { version = "0.3.0-alpha.19", features = ["compat"] }
