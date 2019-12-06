@@ -2,20 +2,21 @@
 
 ![Build status](https://github.com/mre/futures-batch/workflows/Rust/badge.svg)
 
-An adaptor that chunks up elements and flushes them after a timeout or when the buffer is full.
+An adaptor that chunks up completed futures in a stream and flushes them after a timeout or when the buffer is full.
 (The project was initially called `tokio-batch`, but was renamed as it has no dependency on Tokio anymore.)
 
 ## Description
 
-An adaptor that chunks up elements in a vector.
+An adaptor that chunks up completed futures in a stream.
 
-This adaptor will buffer up a list of items in the stream and pass on the
-vector used for buffering when a specified capacity has been reached
+This adaptor will buffer up a list of items in a stream and pass on the
+collection used for buffering when a specified capacity has been reached
 or a predefined timeout was triggered.
 
 ## Usage
 
-Either as a standalone Stream Operator or directly as a combinator:
+Either as a standalone stream operator or directly as a combinator:
+
 ```rust
 use futures::future;
 use futures::stream;
