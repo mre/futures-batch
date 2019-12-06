@@ -1,8 +1,9 @@
-# tokio-batch
+# futures-batch
 
-![Build status](https://github.com/mre/tokio-batch/workflows/Rust/badge.svg)
+![Build status](https://github.com/mre/futures-batch/workflows/Rust/badge.svg)
 
 An adaptor that chunks up elements and flushes them after a timeout or when the buffer is full.
+(The project was initially called `tokio-batch`, but was renamed as it has no dependency on Tokio anymore.)
 
 ## Description
 
@@ -20,7 +21,7 @@ use futures::future;
 use futures::stream;
 use futures::{FutureExt, StreamExt, TryFutureExt};
 use std::time::Duration;
-use tokio_batch::ChunksTimeoutStreamExt;
+use futures_batch::ChunksTimeoutStreamExt;
 
 fn main() {
     let iter = vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9].into_iter();
@@ -45,7 +46,7 @@ Check [this blog post](https://rust-lang-nursery.github.io/futures-rs/blog/2019/
 
 ## Performance
 
-`tokio-batch` imposes very low overhead on your application. For example, it [is even used to batch syscalls](https://github.com/mre/tokio-batch/issues/4).  
+`futures-batch` imposes very low overhead on your application. For example, it [is even used to batch syscalls](https://github.com/mre/futures-batch/issues/4).  
 Under the hood, we are using [`futures-timer`](https://github.com/async-rs/futures-timer), which allows for microsecond timer resolution. 
 If you find a use-case which is not covered, don't be reluctant to open an issue.
 
