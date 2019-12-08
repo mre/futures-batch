@@ -109,12 +109,13 @@ impl<St: Stream> Stream for ChunksTimeout<St> {
                     // If so, replace our buffer with a new and empty one and return
                     // the full one.
                     Some(item) => {
-                        if self.items.is_empty() {
-                            *self.as_mut().project().clock = Some(Delay::new(self.duration));
+                        let mut this = self.as_mut().project();
+                        if this.items.is_empty() {
+                            *this.clock = Some(Delay::new(*this.duration));
                         }
-                        self.as_mut().project().items.push(item);
-                        if self.items.len() >= self.cap {
-                            *self.as_mut().project().clock = None;
+                        this.items.push(item);
+                        if this.items.len() >= *this.cap {
+                            *this.clock = None;
                             return Poll::Ready(Some(self.as_mut().take()));
                         } else {
                             // Continue the loop
@@ -125,10 +126,11 @@ impl<St: Stream> Stream for ChunksTimeout<St> {
                     // Since the underlying stream ran out of values, return what we
                     // have buffered, if we have anything.
                     None => {
-                        let last = if self.items.is_empty() {
+                        let this = self.as_mut().project();
+                        let last = if this.items.is_empty() {
                             None
                         } else {
-                            let full_buf = mem::replace(self.as_mut().project().items, Vec::new());
+                            let full_buf = mem::replace(this.items, Vec::new());
                             Some(full_buf)
                         };
 
@@ -139,8 +141,13 @@ impl<St: Stream> Stream for ChunksTimeout<St> {
                 Poll::Pending => {}
             }
 
-            let this = self.as_mut().project();
-            match this.clock.as_pin_mut().map(|clock| clock.poll(cx)) {
+            match self
+                .as_mut()
+                .project()
+                .clock
+                .as_pin_mut()
+                .map(|clock| clock.poll(cx))
+            {
                 Some(Poll::Ready(())) => {
                     *self.as_mut().project().clock = None;
                     return Poll::Ready(Some(self.as_mut().take()));
@@ -148,7 +155,7 @@ impl<St: Stream> Stream for ChunksTimeout<St> {
                 Some(Poll::Pending) => {}
                 None => {
                     debug_assert!(
-                        this.items.is_empty(),
+                        self.project().items.is_empty(),
                         "Inner buffer is empty, but clock is available."
                     );
                 }
