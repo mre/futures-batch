@@ -9,7 +9,7 @@ repository = "https://github.com/mre/futures-batch"
 
 [dependencies]
 futures = { version = "0.3", features = ["async-await"] }
-pin-utils = "0.1.0-alpha.4"
+pin-project-lite = "0.1"
 futures-timer = "2.0.2"
 
 [dev-dependencies]
