@@ -231,7 +231,6 @@ mod tests {
         );
     }
 
-    // TODO: use the `tokio-test` and `futures-test-preview` crates
     #[tokio::test]
     async fn message_timeout() {
         let iter = vec![1, 2, 3, 4].into_iter();
