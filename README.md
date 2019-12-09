@@ -29,7 +29,7 @@ async fn main() {
 }
 ```
 
-\_Note: This is using the [`futures 0.3`](https://crates.io/crates/futures) crate.
+*Note: This is using the [`futures 0.3`](https://crates.io/crates/futures) crate.*
 
 ## Performance
 
