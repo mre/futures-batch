@@ -8,10 +8,12 @@ edition = "2018"
 repository = "https://github.com/mre/futures-batch"
 
 [dependencies]
-futures-preview = { version = "0.3.0-alpha.19", features = ["compat"] }
+futures = { version = "0.3", features = ["async-await"] }
 pin-utils = "0.1.0-alpha.4"
-tokio = "0.1.22"
 futures-timer = "2.0.2"
+
+[dev-dependencies]
+tokio = { version = "0.2", features = ["macros", "rt-core"] }
 
 [dev-dependencies.doc-comment]
 version = "0.3"
