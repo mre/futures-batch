@@ -39,4 +39,4 @@ If you find a use-case which is not covered, don't be reluctant to open an issue
 
 ## Credits
 
-Thanks to [arielb1](https://github.com/arielb1), [alexcrichton](https://github.com/alexcrichton/), [doyoubi](https://github.com/doyoubi), [leshow](https://github.com/leshow), [spebern](https://github.com/spebern), [wngr](https://github.com/wngr) for their contributions!
+Thanks to [arielb1](https://github.com/arielb1), [alexcrichton](https://github.com/alexcrichton/), [doyoubi](https://github.com/doyoubi), [leshow](https://github.com/leshow), [spebern](https://github.com/spebern), and [wngr](https://github.com/wngr) for their contributions!
