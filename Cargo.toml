@@ -10,7 +10,7 @@ repository = "https://github.com/mre/futures-batch"
 [dependencies]
 futures = { version = "0.3", features = ["async-await"] }
 pin-utils = "0.1.0-alpha.4"
-futures-timer = "2.0.2"
+futures-timer = "3.0.0"
 
 [dev-dependencies]
 tokio = { version = "0.2", features = ["macros", "rt-core"] }
