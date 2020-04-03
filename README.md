@@ -29,7 +29,8 @@ async fn main() {
 }
 ```
 
-*Note: This is using the [`futures 0.3`](https://crates.io/crates/futures) crate.*
+The above code iterates over a stream and creates chunks of size 5 with a timeout of 10 seconds.  
+*Note:* This is using the [`futures 0.3`](https://crates.io/crates/futures) crate.
 
 ## Performance
 
