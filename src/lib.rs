@@ -1,3 +1,28 @@
+//! An adaptor that chunks up completed futures in a stream and flushes them after a timeout or when the buffer is full.
+//! It is based on the `Chunks` adaptor of [futures-util](https://github.com/rust-lang-nursery/futures-rs/blob/4613193023dd4071bbd32b666e3b85efede3a725/futures-util/src/stream/chunks.rs), to which we added a timeout.
+//!
+//! ## Usage
+//!
+//! Either as a standalone stream operator or directly as a combinator:
+//!
+//! ```rust
+//! use std::time::Duration;
+//! use futures::{stream, StreamExt};
+//! use futures_batch::ChunksTimeoutStreamExt;
+//!
+//! #[tokio::main]
+//! async fn main() {
+//!     let iter = vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9].into_iter();
+//!     let results = stream::iter(iter)
+//!         .chunks_timeout(5, Duration::new(10, 0))
+//!         .collect::<Vec<_>>();
+//!
+//!     assert_eq!(vec![vec![0, 1, 2, 3, 4], vec![5, 6, 7, 8, 9]], results.await);
+//! }
+//! ```
+//!
+//! The above code iterates over a stream and creates chunks of size 5 with a timeout of 10 seconds.
+
 #[cfg(test)]
 #[macro_use]
 extern crate doc_comment;
@@ -18,6 +43,8 @@ use pin_utils::{unsafe_pinned, unsafe_unpinned};
 use futures_timer::Delay;
 use std::time::Duration;
 
+/// A Stream extension trait allowing you to call `chunks_timeout` on anything
+/// which implements `Stream`.
 pub trait ChunksTimeoutStreamExt: Stream {
     fn chunks_timeout(self, capacity: usize, duration: Duration) -> ChunksTimeout<Self>
     where
@@ -28,6 +55,7 @@ pub trait ChunksTimeoutStreamExt: Stream {
 }
 impl<T: ?Sized> ChunksTimeoutStreamExt for T where T: Stream {}
 
+/// A Stream of chunks.
 #[derive(Debug)]
 #[must_use = "streams do nothing unless polled"]
 pub struct ChunksTimeout<St: Stream> {

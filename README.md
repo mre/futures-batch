@@ -16,10 +16,8 @@ It is based on the `Chunks` adaptor of [futures-util](https://github.com/rust-la
 Either as a standalone stream operator or directly as a combinator:
 
 ```rust
-use futures::future;
-use futures::stream;
-use futures::{FutureExt, StreamExt, TryFutureExt};
 use std::time::Duration;
+use futures::{stream, StreamExt};
 use futures_batch::ChunksTimeoutStreamExt;
 
 #[tokio::main]
