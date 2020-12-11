@@ -1,6 +1,10 @@
 # futures-batch
 
 ![Build status](https://github.com/mre/futures-batch/workflows/Rust/badge.svg)
+[![Cargo](https://img.shields.io/crates/v/futures-batch.svg)](
+https://crates.io/crates/futures-batch)
+[![Documentation](https://docs.rs/futures-batch/badge.svg)](
+https://docs.rs/futures-batch)
 
 An adaptor that chunks up completed futures in a stream and flushes them after a timeout or when the buffer is full.
 It is based on the `Chunks` adaptor of [futures-util](https://github.com/rust-lang-nursery/futures-rs/blob/4613193023dd4071bbd32b666e3b85efede3a725/futures-util/src/stream/chunks.rs), to which we added a timeout.
@@ -12,10 +16,8 @@ It is based on the `Chunks` adaptor of [futures-util](https://github.com/rust-la
 Either as a standalone stream operator or directly as a combinator:
 
 ```rust
-use futures::future;
-use futures::stream;
-use futures::{FutureExt, StreamExt, TryFutureExt};
 use std::time::Duration;
+use futures::{stream, StreamExt};
 use futures_batch::ChunksTimeoutStreamExt;
 
 #[tokio::main]
