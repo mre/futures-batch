@@ -3,7 +3,7 @@ authors = ["Matthias Endler <matthias-endler@gmx.net>"]
 description = "An adaptor that chunks up elements and flushes them after a timeout or when the buffer is full. (Formerly known as tokio-batch.)"
 license = "MIT OR Apache-2.0"
 name = "futures-batch"
-version = "0.6.0"
+version = "0.6.1"
 edition = "2018"
 repository = "https://github.com/mre/futures-batch"
 
