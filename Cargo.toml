@@ -9,11 +9,11 @@ repository = "https://github.com/mre/futures-batch"
 
 [dependencies]
 futures = { version = "0.3", features = ["async-await"] }
-pin-utils = "0.1.0-alpha.4"
-futures-timer = "3.0.0"
+pin-utils = "0.1.0"
+futures-timer = "3.0.2"
 
 [dev-dependencies]
-tokio = { version = "1.0", features = ["macros", "rt-multi-thread"] }
+tokio = { version = "1.22", features = ["macros", "rt-multi-thread"] }
 
 [dev-dependencies.doc-comment]
 version = "0.3"
