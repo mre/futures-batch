@@ -157,7 +157,7 @@ impl<St: Stream> Stream for ChunksTimeout<St> {
                         let last = if self.items.is_empty() {
                             None
                         } else {
-                            let full_buf = mem::replace(self.as_mut().items(), Vec::new());
+                            let full_buf = mem::take(self.as_mut().items());
                             Some(full_buf)
                         };
 
