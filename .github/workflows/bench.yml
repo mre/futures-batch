@@ -1,0 +1,15 @@
+on:
+  - pull_request
+  - workflow_dispatch
+
+name: criterion benchmark
+jobs:
+  runBenchmark:
+    name: run benchmark
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: boa-dev/criterion-compare-action@v3
+        with:
+          # Use the base branch name as the branch to compare with
+          branchName: ${{ github.base_ref }}
