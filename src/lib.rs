@@ -12,8 +12,7 @@
 //!
 //! #[tokio::main]
 //! async fn main() {
-//!     let iter = vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9].into_iter();
-//!     let results = stream::iter(iter)
+//!     let results = stream::iter(0..10)
 //!         .chunks_timeout(5, Duration::new(10, 0))
 //!         .collect::<Vec<_>>();
 //!
@@ -237,8 +236,7 @@ mod tests {
 
     #[tokio::test]
     async fn message_chunks() {
-        let iter = vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9].into_iter();
-        let stream = stream::iter(iter);
+        let stream = stream::iter(0..10);
 
         let chunk_stream = ChunksTimeout::new(stream, 5, Duration::new(1, 0));
         assert_eq!(

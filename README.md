@@ -1,10 +1,8 @@
 # futures-batch
 
 ![Build status](https://github.com/mre/futures-batch/workflows/Rust/badge.svg)
-[![Cargo](https://img.shields.io/crates/v/futures-batch.svg)](
-https://crates.io/crates/futures-batch)
-[![Documentation](https://docs.rs/futures-batch/badge.svg)](
-https://docs.rs/futures-batch)
+[![Cargo](https://img.shields.io/crates/v/futures-batch.svg)](https://crates.io/crates/futures-batch)
+[![Documentation](https://docs.rs/futures-batch/badge.svg)](https://docs.rs/futures-batch)
 
 An adaptor that chunks up completed futures in a stream and flushes them after a timeout or when the buffer is full.
 It is based on the `Chunks` adaptor of [futures-util](https://github.com/rust-lang-nursery/futures-rs/blob/4613193023dd4071bbd32b666e3b85efede3a725/futures-util/src/stream/chunks.rs), to which we added a timeout.
@@ -22,8 +20,7 @@ use futures_batch::ChunksTimeoutStreamExt;
 
 #[tokio::main]
 async fn main() {
-    let iter = vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9].into_iter();
-    let results = stream::iter(iter)
+    let results = stream::iter(0..10)
         .chunks_timeout(5, Duration::new(10, 0))
         .collect::<Vec<_>>();
 
@@ -32,7 +29,7 @@ async fn main() {
 ```
 
 The above code iterates over a stream and creates chunks of size 5 with a timeout of 10 seconds.  
-*Note:* This is using the [`futures 0.3`](https://crates.io/crates/futures) crate.
+_Note:_ This is using the [`futures 0.3`](https://crates.io/crates/futures) crate.
 
 ## Performance
 
