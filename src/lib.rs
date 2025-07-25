@@ -31,10 +31,10 @@ doctest!("../README.md");
 
 use core::mem;
 use core::pin::Pin;
-use futures::stream::{Fuse, FusedStream, Stream};
-use futures::task::{Context, Poll};
 use futures::Future;
 use futures::StreamExt;
+use futures::stream::{Fuse, FusedStream, Stream};
+use futures::task::{Context, Poll};
 #[cfg(feature = "sink")]
 use futures_sink::Sink;
 use pin_project_lite::pin_project;
@@ -67,6 +67,7 @@ pin_project! {
         #[pin]
         clock: Option<Delay>,
         duration: Duration,
+        clock_used: bool,
     }
 }
 
@@ -74,7 +75,6 @@ impl<St: Stream> ChunksTimeout<St>
 where
     St: Stream,
 {
-
     pub fn new(stream: St, capacity: usize, duration: Duration) -> ChunksTimeout<St> {
         assert!(capacity > 0);
 
@@ -84,9 +84,9 @@ where
             cap: capacity,
             clock: None,
             duration,
+            clock_used: false,
         }
     }
-
 
     /// Acquires a reference to the underlying stream that this combinator is
     /// pulling from.
@@ -126,7 +126,7 @@ impl<St: Stream> Stream for ChunksTimeout<St> {
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let mut this = self.project();
-        
+
         loop {
             match this.stream.as_mut().poll_next(cx) {
                 Poll::Ready(item) => match item {
@@ -134,14 +134,19 @@ impl<St: Stream> Stream for ChunksTimeout<St> {
                     // If so, replace our buffer with a new and empty one and return
                     // the full one.
                     Some(item) => {
-                        if this.items.is_empty() {
+                        if this.items.is_empty() && !*this.clock_used {
+                            *this.clock_used = true;
                             this.clock.as_mut().set(Some(Delay::new(*this.duration)));
                         }
                         this.items.push(item);
                         if this.items.len() >= *this.cap {
+                            *this.clock_used = false;
                             this.clock.as_mut().set(None);
                             let cap = *this.cap;
-                            return Poll::Ready(Some(mem::replace(this.items, Vec::with_capacity(cap))));
+                            return Poll::Ready(Some(mem::replace(
+                                this.items,
+                                Vec::with_capacity(cap),
+                            )));
                         } else {
                             // Continue the loop
                             continue;
@@ -154,24 +159,21 @@ impl<St: Stream> Stream for ChunksTimeout<St> {
                         let last = if this.items.is_empty() {
                             None
                         } else {
-                            Some(mem::take(this.items))
+                            let full_buf = mem::take(this.items);
+                            Some(full_buf)
                         };
 
                         return Poll::Ready(last);
                     }
                 },
-                // Don't return here, as we need to need check the clock.
+                // Don't return here, as we need to check the clock.
                 Poll::Pending => {}
             }
 
-            match this
-                .clock
-                .as_mut()
-                .as_pin_mut()
-                .map(|clock| clock.poll(cx))
-            {
+            match this.clock.as_mut().as_pin_mut().map(|clock| clock.poll(cx)) {
                 Some(Poll::Ready(())) => {
                     this.clock.as_mut().set(None);
+                    *this.clock_used = false;
                     let cap = *this.cap;
                     return Poll::Ready(Some(mem::replace(this.items, Vec::with_capacity(cap))));
                 }
@@ -179,7 +181,7 @@ impl<St: Stream> Stream for ChunksTimeout<St> {
                 None => {
                     debug_assert!(
                         this.items.is_empty(),
-                        "Inner buffer is empty, but clock is available."
+                        "Clock should be None only when items buffer is empty. We should have yielded on timeout."
                     );
                 }
             }
@@ -234,7 +236,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use futures::{stream, FutureExt, StreamExt};
+    use futures::{FutureExt, StreamExt, stream};
     use std::iter;
     use std::time::{Duration, Instant};
 
