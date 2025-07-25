@@ -1,5 +1,5 @@
 [package]
-authors = ["Matthias Endler <matthias-endler@gmx.net>"]
+authors = ["Matthias Endler <matthias@endler.dev>"]
 description = "An adaptor that chunks up elements and flushes them after a timeout or when the buffer is full. (Formerly known as tokio-batch.)"
 license = "MIT OR Apache-2.0"
 name = "futures-batch"
