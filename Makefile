@@ -21,6 +21,10 @@ test: ## Run tests
 lint: ## Run linter
 	cargo clippy --all-targets --all-features -- -D warnings
 
+.PHONY: bench
+bench: ## Run benchmarks
+	cargo bench
+
 .PHONY: publish
 publish: ## Publish to crates.io
 	cargo publish

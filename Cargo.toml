@@ -4,20 +4,25 @@ description = "An adaptor that chunks up elements and flushes them after a timeo
 license = "MIT OR Apache-2.0"
 name = "futures-batch"
 version = "0.6.1"
-edition = "2018"
+edition = "2024"
 repository = "https://github.com/mre/futures-batch"
 
 [lib]
 # https://bheisler.github.io/criterion.rs/book/faq.html#cargo-bench-gives-unrecognized-option-errors-for-valid-command-line-options
 bench = false
 
+[features]
+default = []
+sink = ["futures-sink"]
+
 [dependencies]
 futures = { version = "0.3", features = ["async-await"] }
-pin-utils = "0.1.0"
-futures-timer = "3.0.2"
+pin-project-lite = "0.2"
+futures-timer = "3.0"
+futures-sink = { version = "0.3", optional = true }
 
 [dev-dependencies]
-tokio = { version = "1.22", features = ["macros", "rt-multi-thread"] }
+tokio = { version = "1.46", features = ["macros", "rt-multi-thread"] }
 criterion = { version = "0.6", features = ["html_reports", "async_tokio"] }
 
 [dev-dependencies.doc-comment]
