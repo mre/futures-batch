@@ -37,7 +37,7 @@ use futures::Future;
 use futures::StreamExt;
 #[cfg(feature = "sink")]
 use futures_sink::Sink;
-use pin_utils::{unsafe_pinned, unsafe_unpinned};
+use pin_project_lite::pin_project;
 
 use futures_timer::Delay;
 use std::time::Duration;
@@ -54,27 +54,26 @@ pub trait ChunksTimeoutStreamExt: Stream {
 }
 impl<T: ?Sized> ChunksTimeoutStreamExt for T where T: Stream {}
 
-/// A Stream of chunks.
-#[derive(Debug)]
-#[must_use = "streams do nothing unless polled"]
-pub struct ChunksTimeout<St: Stream> {
-    stream: Fuse<St>,
-    items: Vec<St::Item>,
-    cap: usize,
-    // https://github.com/rust-lang-nursery/futures-rs/issues/1475
-    clock: Option<Delay>,
-    duration: Duration,
+pin_project! {
+    /// A Stream of chunks.
+    #[derive(Debug)]
+    #[must_use = "streams do nothing unless polled"]
+    pub struct ChunksTimeout<St: Stream> {
+        #[pin]
+        stream: Fuse<St>,
+        items: Vec<St::Item>,
+        cap: usize,
+        // https://github.com/rust-lang-nursery/futures-rs/issues/1475
+        #[pin]
+        clock: Option<Delay>,
+        duration: Duration,
+    }
 }
-
-impl<St: Unpin + Stream> Unpin for ChunksTimeout<St> {}
 
 impl<St: Stream> ChunksTimeout<St>
 where
     St: Stream,
 {
-    unsafe_unpinned!(items: Vec<St::Item>);
-    unsafe_pinned!(clock: Option<Delay>);
-    unsafe_pinned!(stream: Fuse<St>);
 
     pub fn new(stream: St, capacity: usize, duration: Duration) -> ChunksTimeout<St> {
         assert!(capacity > 0);
@@ -88,10 +87,6 @@ where
         }
     }
 
-    fn take(mut self: Pin<&mut Self>) -> Vec<St::Item> {
-        let cap = self.cap;
-        mem::replace(self.as_mut().items(), Vec::with_capacity(cap))
-    }
 
     /// Acquires a reference to the underlying stream that this combinator is
     /// pulling from.
@@ -114,7 +109,7 @@ where
     /// Note that care must be taken to avoid tampering with the state of the
     /// stream which may otherwise confuse this combinator.
     pub fn get_pin_mut(self: Pin<&mut Self>) -> Pin<&mut St> {
-        self.stream().get_pin_mut()
+        self.project().stream.get_pin_mut()
     }
 
     /// Consumes this combinator, returning the underlying stream.
@@ -129,21 +124,24 @@ where
 impl<St: Stream> Stream for ChunksTimeout<St> {
     type Item = Vec<St::Item>;
 
-    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        let mut this = self.project();
+        
         loop {
-            match self.as_mut().stream().poll_next(cx) {
+            match this.stream.as_mut().poll_next(cx) {
                 Poll::Ready(item) => match item {
                     // Push the item into the buffer and check whether it is full.
                     // If so, replace our buffer with a new and empty one and return
                     // the full one.
                     Some(item) => {
-                        if self.items.is_empty() {
-                            *self.as_mut().clock() = Some(Delay::new(self.duration));
+                        if this.items.is_empty() {
+                            this.clock.as_mut().set(Some(Delay::new(*this.duration)));
                         }
-                        self.as_mut().items().push(item);
-                        if self.items.len() >= self.cap {
-                            *self.as_mut().clock() = None;
-                            return Poll::Ready(Some(self.as_mut().take()));
+                        this.items.push(item);
+                        if this.items.len() >= *this.cap {
+                            this.clock.as_mut().set(None);
+                            let cap = *this.cap;
+                            return Poll::Ready(Some(mem::replace(this.items, Vec::with_capacity(cap))));
                         } else {
                             // Continue the loop
                             continue;
@@ -153,11 +151,10 @@ impl<St: Stream> Stream for ChunksTimeout<St> {
                     // Since the underlying stream ran out of values, return what we
                     // have buffered, if we have anything.
                     None => {
-                        let last = if self.items.is_empty() {
+                        let last = if this.items.is_empty() {
                             None
                         } else {
-                            let full_buf = mem::take(self.as_mut().items());
-                            Some(full_buf)
+                            Some(mem::take(this.items))
                         };
 
                         return Poll::Ready(last);
@@ -167,20 +164,21 @@ impl<St: Stream> Stream for ChunksTimeout<St> {
                 Poll::Pending => {}
             }
 
-            match self
+            match this
+                .clock
                 .as_mut()
-                .clock()
                 .as_pin_mut()
                 .map(|clock| clock.poll(cx))
             {
                 Some(Poll::Ready(())) => {
-                    *self.as_mut().clock() = None;
-                    return Poll::Ready(Some(self.as_mut().take()));
+                    this.clock.as_mut().set(None);
+                    let cap = *this.cap;
+                    return Poll::Ready(Some(mem::replace(this.items, Vec::with_capacity(cap))));
                 }
                 Some(Poll::Pending) => {}
                 None => {
                     debug_assert!(
-                        self.items().is_empty(),
+                        this.items.is_empty(),
                         "Inner buffer is empty, but clock is available."
                     );
                 }
@@ -216,7 +214,21 @@ where
 {
     type Error = S::Error;
 
-    delegate_sink!(stream, Item);
+    fn poll_ready(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        self.project().stream.poll_ready(cx)
+    }
+
+    fn start_send(self: Pin<&mut Self>, item: Item) -> Result<(), Self::Error> {
+        self.project().stream.start_send(item)
+    }
+
+    fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        self.project().stream.poll_flush(cx)
+    }
+
+    fn poll_close(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        self.project().stream.poll_close(cx)
+    }
 }
 
 #[cfg(test)]
