@@ -41,6 +41,29 @@ async fn main() {
 
 This creates chunks of up to 5 items with a 10-second timeout.
 
+## TryChunksTimeout 
+
+For streams that yield `Result` values, use `try_chunks_timeout` to batch successful values and immediately propagate errors:
+
+```rust
+use std::time::Duration;
+use futures::{stream, StreamExt};
+use futures_batch::TryChunksTimeoutStreamExt;
+
+#[tokio::main]
+async fn main() {
+    let results = stream::iter((0..10).map(|i| if i == 5 { Err("error") } else { Ok(i) }))
+        .try_chunks_timeout(3, Duration::from_secs(10))
+        .collect::<Vec<_>>()
+        .await;
+
+    // Results in: [Ok([0, 1, 2]), Ok([3, 4]), Err("error"), Ok([6, 7, 8]), Ok([9])]
+    println!("{:?}", results);
+}
+```
+
+This batches `Ok` values until the buffer is full or timeout occurs, while immediately propagating any `Err` values.
+
 ## Features
 
 ### `sink` (optional)
@@ -52,7 +75,7 @@ Enable `Sink` support for bidirectional streams:
 futures-batch = { version = "0.7", features = ["sink"] }
 ```
 
-When enabled, `ChunksTimeout` implements `Sink` and forwards sink operations to the underlying stream.
+When enabled, both `ChunksTimeout` and `TryChunksTimeout` implement `Sink` and forward sink operations to the underlying stream.
 
 ## Performance
 
